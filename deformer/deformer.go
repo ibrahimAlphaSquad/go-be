@@ -34,22 +34,8 @@ type NoisyPayload struct {
 	Data      map[string]string `json:"data"`
 }
 
-// func init() {
-// 	// Look for .env file in the current directory
-// 	if err := godotenv.Load(); err != nil {
-// 		// Look for .env file in the project root
-// 		if err := godotenv.Load("../.env"); err != nil {
-// 			fmt.Printf("Warning: No .env file found: %v\n", err)
-// 		}
-// 	}
-// }
-
-// init loads the environment variables from .env file
 func init() {
-	// Load .env file if it exists
 	if err := godotenv.Load(); err != nil {
-		// We don't return an error here as the .env file is optional
-		// Environment variables might be set through other means
 		fmt.Printf("Warning: No .env file found: %v\n", err)
 	}
 }
@@ -58,11 +44,11 @@ func init() {
 func NewPayloadNoise() (*PayloadNoise, error) {
 	key := os.Getenv("PAYLOAD_NOISE_KEY")
 	if key == "" {
-		return nil, fmt.Errorf("PAYLOAD_NOISE_KEY environment variable is not set")
+		key = "test-encryption-key-2024" // Default key as in JS
 	}
 
 	if len(key) < 16 {
-		return nil, fmt.Errorf("PAYLOAD_NOISE_KEY must be at least 16 characters long for security")
+		return nil, fmt.Errorf("PAYLOAD_NOISE_KEY must be at least 16 characters long")
 	}
 
 	return &PayloadNoise{
@@ -110,10 +96,10 @@ func (p *PayloadNoise) Encode(payload map[string]interface{}) (*NoisyPayload, er
 			return nil, fmt.Errorf("failed to marshal value for key %s: %v", key, err)
 		}
 
-		// Pad the data
+		// Pad data
 		paddedData := p.pkcs7Pad(valueBytes, aes.BlockSize)
 
-		// Encrypt the value
+		// Encrypt value
 		encrypted := make([]byte, len(paddedData))
 		mode.CryptBlocks(encrypted, paddedData)
 
@@ -133,7 +119,7 @@ func (p *PayloadNoise) Encode(payload map[string]interface{}) (*NoisyPayload, er
 		Data:      noisyData,
 	}
 
-	// Add hash
+	// Add hash last
 	finalPayload.Hash = p.generateHash(finalPayload.Data)
 
 	return finalPayload, nil
