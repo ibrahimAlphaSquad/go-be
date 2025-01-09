@@ -44,15 +44,20 @@ func init() {
 func NewPayloadNoise() (*PayloadNoise, error) {
 	key := os.Getenv("PAYLOAD_NOISE_KEY")
 	if key == "" {
-		key = "test-encryption-key-2024" // Default key as in JS
+		key = "test-encryption-key-2024" // Default key
 	}
+
+	fmt.Printf("Using key (string): %s\n", key)
+	// Store key as UTF-8 bytes to match CryptoJS behavior
+	keyBytes := []byte(key)
+	fmt.Printf("Using key (hex): %x\n", keyBytes)
 
 	if len(key) < 16 {
 		return nil, fmt.Errorf("PAYLOAD_NOISE_KEY must be at least 16 characters long")
 	}
 
 	return &PayloadNoise{
-		key: []byte(key),
+		key: keyBytes,
 	}, nil
 }
 
@@ -212,15 +217,31 @@ func (p *PayloadNoise) recoverOriginalKey(noisyKey string) string {
 }
 
 func (p *PayloadNoise) generateHash(payload map[string]string) string {
-	h := hmac.New(sha256.New, p.key)
-	payloadBytes, _ := json.Marshal(payload)
-	h.Write(payloadBytes)
-	return hex.EncodeToString(h.Sum(nil))
+    // Convert the payload to JSON in the same way JavaScript does
+    payloadBytes, _ := json.Marshal(payload)
+    
+    // Debug: Print the JSON string before hashing
+    fmt.Printf("JSON string before hashing: %s\n", string(payloadBytes))
+    
+    // Create HMAC using SHA256
+    h := hmac.New(sha256.New, p.key)
+    h.Write(payloadBytes)
+    
+    // Get the hash result
+    hashResult := hex.EncodeToString(h.Sum(nil))
+    fmt.Printf("Generated hash: %s\n", hashResult)
+    
+    return hashResult
 }
 
 func (p *PayloadNoise) verifyHash(payload *NoisyPayload) bool {
-	calculatedHash := p.generateHash(payload.Data)
-	return payload.Hash == calculatedHash
+    providedHash := payload.Hash
+    calculatedHash := p.generateHash(payload.Data)
+    
+    fmt.Printf("Provided hash:   %s\n", providedHash)
+    fmt.Printf("Calculated hash: %s\n", calculatedHash)
+    
+    return providedHash == calculatedHash
 }
 
 func (p *PayloadNoise) validatePayload(payload *NoisyPayload) bool {
